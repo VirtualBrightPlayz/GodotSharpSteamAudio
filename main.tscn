@@ -1,0 +1,63 @@
+[gd_scene load_steps=10 format=3 uid="uid://b0htn5p6j1ad0"]
+
+[ext_resource type="Script" path="res://addons/gd_steam_audio/GDSteamAudio.cs" id="1_2g1dd"]
+[ext_resource type="Script" path="res://addons/gd_steam_audio/SteamAudioPlayer.cs" id="1_ubuh4"]
+[ext_resource type="AudioStream" uid="uid://devnba3gtn6vv" path="res://Unity.mp3" id="2_7rlyf"]
+[ext_resource type="Script" path="res://addons/gd_steam_audio/SteamAudioCollider.cs" id="4_em1h5"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_eop8g"]
+sky_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+ground_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+
+[sub_resource type="Sky" id="Sky_p0due"]
+sky_material = SubResource("ProceduralSkyMaterial_eop8g")
+
+[sub_resource type="Environment" id="Environment_p47d5"]
+background_mode = 2
+sky = SubResource("Sky_p0due")
+tonemap_mode = 2
+glow_enabled = true
+
+[sub_resource type="BoxMesh" id="BoxMesh_m3e5j"]
+flip_faces = true
+size = Vector3(5, 5, 5)
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_3x8na"]
+data = PackedVector3Array(2.5, 2.5, 2.5, -2.5, 2.5, 2.5, -2.5, -2.5, 2.5, 2.5, -2.5, 2.5, 2.5, 2.5, 2.5, -2.5, -2.5, 2.5, -2.5, 2.5, -2.5, 2.5, 2.5, -2.5, 2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, 2.5, -2.5, 2.5, -2.5, -2.5, 2.5, 2.5, -2.5, 2.5, 2.5, 2.5, 2.5, -2.5, 2.5, 2.5, -2.5, -2.5, 2.5, 2.5, -2.5, 2.5, -2.5, 2.5, -2.5, 2.5, 2.5, -2.5, 2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, 2.5, -2.5, 2.5, 2.5, -2.5, -2.5, -2.5, -2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5, -2.5, -2.5, 2.5, -2.5, -2.5, 2.5, 2.5, 2.5, 2.5, -2.5, 2.5, -2.5, 2.5, -2.5, -2.5, 2.5, -2.5, -2.5, -2.5, 2.5, -2.5, -2.5, 2.5, -2.5, 2.5, -2.5, -2.5, -2.5)
+
+[node name="Node3D" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_p47d5")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.866023, -0.433016, 0.250001, 0, 0.499998, 0.866027, -0.500003, 0.749999, -0.43301, 0, 0, 0)
+shadow_enabled = true
+
+[node name="SteamAudio" type="Node" parent="." node_paths=PackedStringArray("camera")]
+script = ExtResource("1_2g1dd")
+camera = NodePath("../Camera3D")
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("2_7rlyf")
+autoplay = true
+
+[node name="SteamAudioPlayer" type="Node" parent="AudioStreamPlayer3D"]
+script = ExtResource("1_ubuh4")
+Reflections = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_m3e5j")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D/StaticBody3D"]
+shape = SubResource("ConcavePolygonShape3D_3x8na")
+
+[node name="SteamAudioCollider" type="Node" parent="MeshInstance3D/StaticBody3D/CollisionShape3D"]
+script = ExtResource("4_em1h5")
+
+[connection signal="finished" from="AudioStreamPlayer3D" to="AudioStreamPlayer3D" method="play"]
