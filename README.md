@@ -41,6 +41,7 @@ Just know that...
 
 - Copy the `addons` folder from this repository into your project
 - Install the binary from [Steam Audio Releases](https://github.com/ValveSoftware/steam-audio/releases) into `addons` (don't put the `dll` or `so` in a subfolder; use 64-bit binaries when Godot Engine is 64-bit)
+- - **When exporting a project, these binaries need to be placed next the game executable**
 - Add `<AllowUnsafeBlocks>true</AllowUnsafeBlocks>` to your `.csproj` in the right place
 - Under Project -> Project Settings
 - - Enable Advanced settings
