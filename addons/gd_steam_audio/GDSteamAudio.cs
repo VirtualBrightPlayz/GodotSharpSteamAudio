@@ -30,7 +30,7 @@ public partial class GDSteamAudio : Node
     public const string LogPrefix = "SteamAudio: ";
     public const int MixRate = 48000;
     // public const int AudioFrameSize = 1024 * 4;
-    public const int AudioFrameSize = 1024 * 1;
+    public const int AudioFrameSize = 1024 * 2;
     public const int AudioFrameSizeInBytes = AudioFrameSize * sizeof(float);
     public const IPL.ReflectionEffectType ReflType = IPL.ReflectionEffectType.Convolution;
     public static Dictionary<MaterialPreset, float[]> materialPresets = new Dictionary<MaterialPreset, float[]>()
