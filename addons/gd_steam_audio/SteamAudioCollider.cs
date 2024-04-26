@@ -11,6 +11,7 @@ public partial class SteamAudioCollider : Node
 
     public override void _EnterTree()
     {
+        lastPreset = Preset;
         CollisionShape3D parent = GetParent<CollisionShape3D>();
         staticMesh = GDSteamAudio.NewStaticMesh(GDSteamAudio.SceneDefault, Preset, parent.GlobalTransform, (ConcavePolygonShape3D)parent.Shape);
         IPL.StaticMeshAdd(staticMesh, GDSteamAudio.SceneDefault);
@@ -40,5 +41,6 @@ public partial class SteamAudioCollider : Node
             IPL.SceneCommit(GDSteamAudio.SceneDefault);
             IPL.SimulatorCommit(GDSteamAudio.SimulatorDefault);
         });
+        GDSteamAudio.DelStaticMesh(staticMesh);
     }
 }

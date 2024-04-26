@@ -30,7 +30,7 @@ public partial class GDSteamAudio : Node
     public const string LogPrefix = "SteamAudio: ";
     public const int MixRate = 48000;
     // public const int AudioFrameSize = 1024 * 4;
-    public const int AudioFrameSize = 1024 * 2;
+    public const int AudioFrameSize = 1024 * 1;
     public const int AudioFrameSizeInBytes = AudioFrameSize * sizeof(float);
     public const IPL.ReflectionEffectType ReflType = IPL.ReflectionEffectType.Convolution;
     public static Dictionary<MaterialPreset, float[]> materialPresets = new Dictionary<MaterialPreset, float[]>()
@@ -65,9 +65,6 @@ public partial class GDSteamAudio : Node
     public static IPL.Hrtf HrtfDefault;
     public static IPL.Scene SceneDefault;
     public static IPL.Simulator SimulatorDefault;
-    public static IPL.DirectEffect DirectEffectDefault;
-    public static IPL.ReflectionEffect ReflectionEffectDefault;
-    public static IPL.ReflectionMixer ReflectionMixerDefault;
     public delegate void OnSimulatorRunEventHandler();
     public event OnSimulatorRunEventHandler OnSimulatorRun;
     public static System.Threading.Mutex mutex = new System.Threading.Mutex();
@@ -151,7 +148,7 @@ public partial class GDSteamAudio : Node
             {
                 Listener = GetIPLTransform(cameraTransform),
                 NumRays = 4096,
-                NumBounces = 8,
+                NumBounces = 16,
                 Duration = 2f,
                 Order = 2,
                 IrradianceMinDistance = 1f,
@@ -220,9 +217,6 @@ public partial class GDSteamAudio : Node
         HrtfDefault = default;
         SceneDefault = default;
         SimulatorDefault = default;
-        DirectEffectDefault = default;
-        ReflectionEffectDefault = default;
-        ReflectionMixerDefault = default;
         for (int i = 0; i < sources.Count; i++)
         {
             var item = sources[i];
@@ -325,7 +319,6 @@ public partial class GDSteamAudio : Node
             Flags = IPL.SimulationFlags.Direct | IPL.SimulationFlags.Reflections,
         };
         CheckError(IPL.SourceCreate(simulator, in settings, out var source));
-        // source = IPL.SourceRetain(source);
         IPL.SourceAdd(source, simulator);
         WaitOne(() =>
         {
@@ -359,7 +352,7 @@ public partial class GDSteamAudio : Node
             NumDiffuseSamples = 1024,
             MaxDuration = 2f,
             MaxOrder = 2,
-            MaxNumSources = 64000,
+            MaxNumSources = 32,
             NumThreads = 4,
             SamplingRate = iplAudioSettings.SamplingRate,
             FrameSize = iplAudioSettings.FrameSize,
@@ -368,7 +361,6 @@ public partial class GDSteamAudio : Node
             RayBatchSize = 16,
         };
         CheckError(IPL.SimulatorCreate(iplCtx, in settings, out var sim));
-        // sim = IPL.SimulatorRetain(sim);
         IPL.SimulatorSetScene(sim, scene);
         IPL.SimulatorCommit(sim);
         simulators.Add(sim);
@@ -437,9 +429,14 @@ public partial class GDSteamAudio : Node
             settings.MaterialIndices = (IntPtr)mi;
             CheckError(IPL.StaticMeshCreate(scene, in settings, out mesh));
         }
-        // mesh = IPL.StaticMeshRetain(mesh);
         staticMeshes.Add(mesh);
         return mesh;
+    }
+
+    public static void DelStaticMesh(IPL.StaticMesh mesh)
+    {
+        staticMeshes.Remove(mesh);
+        IPL.StaticMeshRelease(ref mesh);
     }
 
     public static IPL.Scene NewScene()
@@ -451,7 +448,6 @@ public partial class GDSteamAudio : Node
             Type = IPL.SceneType.Default,
         };
         CheckError(IPL.SceneCreate(iplCtx, in settings, out var scene));
-        // scene = IPL.SceneRetain(scene);
         scenes.Add(scene);
         return scene;
     }
@@ -465,9 +461,14 @@ public partial class GDSteamAudio : Node
             NumChannels = numChannels,
         };
         CheckError(IPL.DirectEffectCreate(iplCtx, in iplAudioSettings, in settings, out var effect));
-        // effect = IPL.DirectEffectRetain(effect);
         directEffects.Add(effect);
         return effect;
+    }
+
+    public static void DelDirectEffect(IPL.DirectEffect effect)
+    {
+        directEffects.Remove(effect);
+        IPL.DirectEffectRelease(ref effect);
     }
 
     public static IPL.ReflectionEffect NewReflectionEffect(int numChannels)
@@ -481,9 +482,14 @@ public partial class GDSteamAudio : Node
             IrSize = iplAudioSettings.SamplingRate * 2,
         };
         CheckError(IPL.ReflectionEffectCreate(iplCtx, in iplAudioSettings, in settings, out var effect));
-        // effect = IPL.ReflectionEffectRetain(effect);
         reflectionEffects.Add(effect);
         return effect;
+    }
+
+    public static void DelReflectionEffect(IPL.ReflectionEffect effect)
+    {
+        reflectionEffects.Remove(effect);
+        IPL.ReflectionEffectRelease(ref effect);
     }
 
     public static IPL.ReflectionMixer NewReflectionMixer(int numChannels)
@@ -497,9 +503,14 @@ public partial class GDSteamAudio : Node
             IrSize = iplAudioSettings.SamplingRate * 2,
         };
         CheckError(IPL.ReflectionMixerCreate(iplCtx, in iplAudioSettings, in settings, out var effect));
-        // effect = IPL.ReflectionMixerRetain(effect);
         reflectionMixers.Add(effect);
         return effect;
+    }
+
+    public static void DelReflectionMixer(IPL.ReflectionMixer effect)
+    {
+        reflectionMixers.Remove(effect);
+        IPL.ReflectionMixerRelease(ref effect);
     }
 
     public static IPL.BinauralEffect NewBinauralEffect(IPL.Hrtf hrtf)
@@ -511,12 +522,17 @@ public partial class GDSteamAudio : Node
             Hrtf = hrtf,
         };
         CheckError(IPL.BinauralEffectCreate(iplCtx, in iplAudioSettings, in settings, out var effect));
-        // effect = IPL.BinauralEffectRetain(effect);
         binauralEffects.Add(effect);
         return effect;
     }
 
-    public static IPL.AmbisonicsDecodeEffect NewAmbisonicDecodeEffect(IPL.Hrtf hrtf)
+    public static void DelBinauralEffect(IPL.BinauralEffect effect)
+    {
+        binauralEffects.Remove(effect);
+        IPL.BinauralEffectRelease(ref effect);
+    }
+
+    public static IPL.AmbisonicsDecodeEffect NewAmbisonicsDecodeEffect(IPL.Hrtf hrtf)
     {
         if (!loaded)
             throw new Exception();
@@ -530,9 +546,14 @@ public partial class GDSteamAudio : Node
             },
         };
         CheckError(IPL.AmbisonicsDecodeEffectCreate(iplCtx, in iplAudioSettings, in settings, out var effect));
-        // effect = IPL.AmbisonicsDecodeEffectRetain(effect);
         // binauralEffects.Add(effect);
         return effect;
+    }
+
+    public static void DelAmbisonicsDecodeEffect(IPL.AmbisonicsDecodeEffect effect)
+    {
+        // binauralEffects.Remove(effect);
+        IPL.AmbisonicsDecodeEffectRelease(ref effect);
     }
 
     public static IPL.AudioBuffer NewAudioBuffer(int numChannels)

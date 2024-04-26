@@ -29,19 +29,9 @@ public partial class SteamAudioPlayer : Node
     public float VolumeMultiplier = 1f;
 
     private AudioStreamGeneratorPlayback playback;
-    private IPL.BinauralEffect effect;
-    private IPL.DirectEffect directEffect;
-    private IPL.ReflectionEffect reflectionEffect;
-    private IPL.AmbisonicsDecodeEffect decodeEffect;
-    private IPL.AudioBuffer buffer;
-    private IPL.AudioBuffer buffer2;
-    private IPL.AudioBuffer bufferEffect;
-    private IPL.AudioBuffer bufferEffect2;
-    private IPL.AudioBuffer bufferOut;
-    private IPL.AudioBuffer bufferOut2;
+    private ProcessBuffersDirect directBuffers;
+    private ProcessBuffersReflection reflectionBuffers;
     private IPL.Source source;
-    private float[] tempInterlacingBuffer;
-    private float[] tempInterlacingBuffer2;
     private AudioStreamPlayer3D player;
     private IPL.DirectEffectParams directEffectData;
     private IPL.ReflectionEffectParams reflectionEffectData;
@@ -66,18 +56,8 @@ public partial class SteamAudioPlayer : Node
 
     public override void _EnterTree()
     {
-        effect = GDSteamAudio.NewBinauralEffect(GDSteamAudio.HrtfDefault);
-        directEffect = GDSteamAudio.NewDirectEffect(1);
-        reflectionEffect = GDSteamAudio.NewReflectionEffect(9);
-        decodeEffect = GDSteamAudio.NewAmbisonicDecodeEffect(GDSteamAudio.HrtfDefault);
-        buffer = GDSteamAudio.NewAudioBuffer(1);
-        buffer2 = GDSteamAudio.NewAudioBuffer(1);
-        bufferEffect = GDSteamAudio.NewAudioBuffer(1);
-        bufferEffect2 = GDSteamAudio.NewAudioBuffer(9);
-        bufferOut = GDSteamAudio.NewAudioBuffer(2);
-        bufferOut2 = GDSteamAudio.NewAudioBuffer(2);
-        tempInterlacingBuffer = new float[bufferOut.NumSamples * bufferOut.NumChannels];
-        tempInterlacingBuffer2 = new float[bufferOut2.NumSamples * bufferOut2.NumChannels];
+        directBuffers = new ProcessBuffersDirect();
+        reflectionBuffers = new ProcessBuffersReflection();
 
         player = new AudioStreamPlayer3D();
         player.AttenuationModel = AudioStreamPlayer3D.AttenuationModelEnum.Disabled;
@@ -111,7 +91,7 @@ public partial class SteamAudioPlayer : Node
         bool found = false;
         if (parent != null && IsInstanceValid(GDSteamAudio.Instance.camera))
         {
-            if (true || parent.GlobalPosition.DistanceSquaredTo(GDSteamAudio.Instance.camera.GlobalPosition) <= MaxDistance * MaxDistance)
+            if (parent.GlobalPosition.DistanceSquaredTo(GDSteamAudio.Instance.camera.GlobalPosition) <= MaxDistance * MaxDistance)
             {
                 if (bus == null)
                 {
@@ -167,12 +147,10 @@ public partial class SteamAudioPlayer : Node
         GDSteamAudio.Instance.OnSimulatorRun -= SimRun;
         if (source.Handle != IntPtr.Zero)
             GDSteamAudio.DelSource(source, GDSteamAudio.SimulatorDefault);
-        GDSteamAudio.DelAudioBuffer(buffer);
-        GDSteamAudio.DelAudioBuffer(buffer2);
-        GDSteamAudio.DelAudioBuffer(bufferEffect);
-        GDSteamAudio.DelAudioBuffer(bufferEffect2);
-        GDSteamAudio.DelAudioBuffer(bufferOut);
-        GDSteamAudio.DelAudioBuffer(bufferOut2);
+        directBuffers.Dispose();
+        directBuffers = null;
+        reflectionBuffers.Dispose();
+        reflectionBuffers = null;
         bus?.Dispose();
         capture = null;
     }
@@ -226,30 +204,25 @@ public partial class SteamAudioPlayer : Node
     {
         var cam = GDSteamAudio.Instance.camera;
         if (cam == null)
-        {
             return;
-        }
         if (!IsInstanceValid(playback) || !IsInstanceValid(capture))
             return;
         int amount = Mathf.Min(playback.GetFramesAvailable(), GDSteamAudio.iplAudioSettings.FrameSize);
         if (amount == 0)
-        {
             return;
-        }
         if (amount < GDSteamAudio.iplAudioSettings.FrameSize)
-        {
             return;
-        }
         if (capture.GetFramesAvailable() < amount)
             return;
-        if (buffer.Data == IntPtr.Zero || buffer2.Data == IntPtr.Zero)
+        if (directBuffers == null || reflectionBuffers == null)
             return;
+
         Vector2[] data = capture.GetBuffer(amount);
-        float *dataPcm = ((float**)buffer.Data)[0];
-        float *dataPcm2 = ((float**)buffer2.Data)[0];
+        float *dataPcmDirect = ((float**)directBuffers.InputBuffer.Data)[0];
+        float *dataPcmReflect = ((float**)reflectionBuffers.InputBuffer.Data)[0];
         for (int i = 0; i < amount; i++)
         {
-            dataPcm[i] = dataPcm2[i] = (data[i].X + data[i].Y) / 2f * VolumeMultiplier;
+            dataPcmDirect[i] = dataPcmReflect[i] = (data[i].X + data[i].Y) / 2f * VolumeMultiplier;
         }
 
         var dir = dataBuffer.dir;
@@ -261,7 +234,7 @@ public partial class SteamAudioPlayer : Node
         var reflectionEffectParams = new IPL.ReflectionEffectParams();
         reflectionEffectParams = reflectionEffectData;
         reflectionEffectParams.IrSize = GDSteamAudio.iplAudioSettings.SamplingRate * 2;
-        reflectionEffectParams.NumChannels = bufferEffect2.NumChannels;
+        reflectionEffectParams.NumChannels = reflectionBuffers.EffectBuffer.NumChannels;
 
         var binauralEffectParams = new IPL.BinauralEffectParams()
         {
@@ -280,22 +253,18 @@ public partial class SteamAudioPlayer : Node
         Vector2[] frames = new Vector2[amount];
         if (Reflections && dir.LengthSquared() <= MaxDistance * MaxDistance)
         {
-            IPL.ReflectionEffectApply(reflectionEffect, ref reflectionEffectParams, ref buffer2, ref bufferEffect2, default);
-            IPL.AmbisonicsDecodeEffectApply(decodeEffect, ref decodeParams, ref bufferEffect2, ref bufferOut2);
-            IPL.AudioBufferInterleave(GDSteamAudio.iplCtx, in bufferOut2, in Unsafe.AsRef(tempInterlacingBuffer2[0]));
+            var InterlacingBuffer = reflectionBuffers.Process(ref reflectionEffectParams, ref decodeParams);
             for (int i = 0; i < frames.Length; i++)
             {
-                frames[i] += new Vector2(tempInterlacingBuffer2[i*bufferOut2.NumChannels], tempInterlacingBuffer2[i*bufferOut2.NumChannels+1]);
+                frames[i] += new Vector2(InterlacingBuffer[i*reflectionBuffers.OutputBuffer.NumChannels], InterlacingBuffer[i*reflectionBuffers.OutputBuffer.NumChannels+1]);
             }
         }
-        // else
+        // TODO: optional and variable direct and reflection effects
         {
-            IPL.DirectEffectApply(directEffect, ref directEffectParams, ref buffer, ref bufferEffect);
-            IPL.BinauralEffectApply(effect, ref binauralEffectParams, ref bufferEffect, ref bufferOut);
-            IPL.AudioBufferInterleave(GDSteamAudio.iplCtx, in bufferOut, in Unsafe.AsRef(tempInterlacingBuffer[0]));
+            var InterlacingBuffer = directBuffers.Process(ref directEffectParams, ref binauralEffectParams);
             for (int i = 0; i < frames.Length; i++)
             {
-                frames[i] += new Vector2(tempInterlacingBuffer[i*bufferOut.NumChannels], tempInterlacingBuffer[i*bufferOut.NumChannels+1]);
+                frames[i] += new Vector2(InterlacingBuffer[i*directBuffers.OutputBuffer.NumChannels], InterlacingBuffer[i*directBuffers.OutputBuffer.NumChannels+1]);
             }
         }
         playback.PushBuffer(frames);
