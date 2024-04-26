@@ -9,7 +9,6 @@ public partial class ProcessBuffersReflection : IDisposable
     public IPL.AudioBuffer InputBuffer;
     public IPL.AudioBuffer EffectBuffer;
     public IPL.AudioBuffer OutputBuffer;
-    // public float[] InterlacingBuffer;
 
     public ProcessBuffersReflection()
     {
@@ -18,7 +17,6 @@ public partial class ProcessBuffersReflection : IDisposable
         InputBuffer = GDSteamAudio.NewAudioBuffer(1);
         EffectBuffer = GDSteamAudio.NewAudioBuffer(9);
         OutputBuffer = GDSteamAudio.NewAudioBuffer(2);
-        // InterlacingBuffer = new float[OutputBuffer.NumSamples * OutputBuffer.NumChannels];
     }
 
     public float[] Process(ref IPL.ReflectionEffectParams reflectionArgs, ref IPL.AmbisonicsDecodeEffectParams ambisonicsArgs)
@@ -37,6 +35,5 @@ public partial class ProcessBuffersReflection : IDisposable
         GDSteamAudio.DelAudioBuffer(InputBuffer);
         GDSteamAudio.DelAudioBuffer(EffectBuffer);
         GDSteamAudio.DelAudioBuffer(OutputBuffer);
-        // InterlacingBuffer = null;
     }
 }

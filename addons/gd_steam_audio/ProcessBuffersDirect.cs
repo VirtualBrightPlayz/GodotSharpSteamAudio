@@ -9,7 +9,6 @@ public partial class ProcessBuffersDirect : IDisposable
     public IPL.AudioBuffer InputBuffer;
     public IPL.AudioBuffer EffectBuffer;
     public IPL.AudioBuffer OutputBuffer;
-    // public float[] InterlacingBuffer;
 
     public IPL.ReflectionEffect ReflectionEffect;
     public IPL.ReflectionMixer ReflectionMixer;
@@ -40,6 +39,5 @@ public partial class ProcessBuffersDirect : IDisposable
         GDSteamAudio.DelAudioBuffer(InputBuffer);
         GDSteamAudio.DelAudioBuffer(EffectBuffer);
         GDSteamAudio.DelAudioBuffer(OutputBuffer);
-        // InterlacingBuffer = null;
     }
 }
