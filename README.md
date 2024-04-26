@@ -23,7 +23,6 @@ A Steam Audio integration for Godot 4.2 using C#.
 - Relatively high audio latency (possibly, not fully tested)
 - Not 100% stable
 - Supports only static geometry (as of now)
-- Allocates huge amounts of memory (I think)
 - As of now, there is only the standard/stock Steam Audio Material Presets
 
 ## Before you Install
