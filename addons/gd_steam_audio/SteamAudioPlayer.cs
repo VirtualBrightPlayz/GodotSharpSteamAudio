@@ -15,8 +15,8 @@ public partial class SteamAudioPlayer : Node
         public Transform3D parentTransform;
     }
 
-    // [Export]
-    public bool LinearDistance = false; // seems to crash stuff
+    [Export]
+    public bool LinearDistance = false;
     [Export]
     public float MinDistance = 5f;
     [Export]
@@ -175,13 +175,18 @@ public partial class SteamAudioPlayer : Node
         capture.Dispose();
     }
 
-    private float DistCallback(float distance, IntPtr userData)
+    private static float DistCallback(float distance, IntPtr userData)
     {
-        return Mathf.Clamp(Mathf.InverseLerp(MaxDistance, MinDistance, distance), 0f, 1f);
+        var obj = GodotObject.InstanceFromId((ulong)userData);
+        if (IsInstanceValid(obj) && obj is SteamAudioPlayer plr)
+            return Mathf.Clamp(Mathf.InverseLerp(plr.MaxDistance, plr.MinDistance, distance), 0f, 1f);
+        return 0f;
     }
 
     private void SimRun()
     {
+        if (!IsInstanceValid(this))
+            return;
         if (source.Handle == IntPtr.Zero)
             return;
 
@@ -194,6 +199,7 @@ public partial class SteamAudioPlayer : Node
             {
                 Type = LinearDistance ? IPL.DistanceAttenuationModelType.Callback : IPL.DistanceAttenuationModelType.InverseDistance,
                 Callback = DistCallback,
+                UserData = (nint)GetInstanceId(),
                 MinDistance = MinDistance,
             },
             AirAbsorptionModel = new IPL.AirAbsorptionModel()
