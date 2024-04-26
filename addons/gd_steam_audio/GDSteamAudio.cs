@@ -184,7 +184,7 @@ public partial class GDSteamAudio : Node
             Version = IPL.Version,
         };
         CheckError(IPL.ContextCreate(in ctxSettings, out iplCtx));
-        IPL.ContextRetain(iplCtx);
+        // IPL.ContextRetain(iplCtx);
         iplAudioSettings = new IPL.AudioSettings()
         {
             SamplingRate = MixRate,
@@ -350,7 +350,7 @@ public partial class GDSteamAudio : Node
             RayBatchSize = 16,
         };
         CheckError(IPL.SimulatorCreate(iplCtx, in settings, out var sim));
-        sim = IPL.SimulatorRetain(sim);
+        // sim = IPL.SimulatorRetain(sim);
         IPL.SimulatorSetScene(sim, scene);
         IPL.SimulatorCommit(sim);
         simulators.Add(sim);
@@ -419,7 +419,7 @@ public partial class GDSteamAudio : Node
             settings.MaterialIndices = (IntPtr)mi;
             CheckError(IPL.StaticMeshCreate(scene, in settings, out mesh));
         }
-        mesh = IPL.StaticMeshRetain(mesh);
+        // mesh = IPL.StaticMeshRetain(mesh);
         staticMeshes.Add(mesh);
         return mesh;
     }
@@ -433,7 +433,7 @@ public partial class GDSteamAudio : Node
             Type = IPL.SceneType.Default,
         };
         CheckError(IPL.SceneCreate(iplCtx, in settings, out var scene));
-        scene = IPL.SceneRetain(scene);
+        // scene = IPL.SceneRetain(scene);
         scenes.Add(scene);
         return scene;
     }
@@ -447,7 +447,7 @@ public partial class GDSteamAudio : Node
             NumChannels = numChannels,
         };
         CheckError(IPL.DirectEffectCreate(iplCtx, in iplAudioSettings, in settings, out var effect));
-        effect = IPL.DirectEffectRetain(effect);
+        // effect = IPL.DirectEffectRetain(effect);
         directEffects.Add(effect);
         return effect;
     }
@@ -463,7 +463,7 @@ public partial class GDSteamAudio : Node
             IrSize = iplAudioSettings.SamplingRate * 2,
         };
         CheckError(IPL.ReflectionEffectCreate(iplCtx, in iplAudioSettings, in settings, out var effect));
-        effect = IPL.ReflectionEffectRetain(effect);
+        // effect = IPL.ReflectionEffectRetain(effect);
         reflectionEffects.Add(effect);
         return effect;
     }
@@ -479,7 +479,7 @@ public partial class GDSteamAudio : Node
             IrSize = iplAudioSettings.SamplingRate * 2,
         };
         CheckError(IPL.ReflectionMixerCreate(iplCtx, in iplAudioSettings, in settings, out var effect));
-        effect = IPL.ReflectionMixerRetain(effect);
+        // effect = IPL.ReflectionMixerRetain(effect);
         reflectionMixers.Add(effect);
         return effect;
     }
@@ -493,7 +493,7 @@ public partial class GDSteamAudio : Node
             Hrtf = hrtf,
         };
         CheckError(IPL.BinauralEffectCreate(iplCtx, in iplAudioSettings, in settings, out var effect));
-        effect = IPL.BinauralEffectRetain(effect);
+        // effect = IPL.BinauralEffectRetain(effect);
         binauralEffects.Add(effect);
         return effect;
     }
@@ -512,7 +512,7 @@ public partial class GDSteamAudio : Node
             },
         };
         CheckError(IPL.AmbisonicsDecodeEffectCreate(iplCtx, in iplAudioSettings, in settings, out var effect));
-        effect = IPL.AmbisonicsDecodeEffectRetain(effect);
+        // effect = IPL.AmbisonicsDecodeEffectRetain(effect);
         // binauralEffects.Add(effect);
         return effect;
     }
@@ -542,7 +542,7 @@ public partial class GDSteamAudio : Node
             Type = IPL.HrtfType.Default,
         };
         CheckError(IPL.HrtfCreate(iplCtx, in iplAudioSettings, in hrtfSettings, out var hrtf));
-        hrtf = IPL.HrtfRetain(hrtf);
+        // hrtf = IPL.HrtfRetain(hrtf);
         hrtfs.Add(hrtf);
         return hrtf;
     }

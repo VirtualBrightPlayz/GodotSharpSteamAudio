@@ -94,8 +94,11 @@ public partial class SteamAudioPlayer : Node
 
         source = default;
         // source = GDSteamAudio.NewSource(GDSteamAudio.SimulatorDefault);
-        dataBuffer.dir = parent.GlobalPosition * GDSteamAudio.Instance.camera.GlobalTransform;
-        dataBuffer.camTransform = GDSteamAudio.Instance.camera.GlobalTransform;
+        if (IsInstanceValid(GDSteamAudio.Instance?.camera))
+        {
+            dataBuffer.dir = parent.GlobalPosition * GDSteamAudio.Instance.camera.GlobalTransform;
+            dataBuffer.camTransform = GDSteamAudio.Instance.camera.GlobalTransform;
+        }
         GDSteamAudio.Instance.OnSimulatorRun += SimRun;
         Play();
     }
