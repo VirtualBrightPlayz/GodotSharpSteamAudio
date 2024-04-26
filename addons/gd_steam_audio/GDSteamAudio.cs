@@ -109,6 +109,7 @@ public partial class GDSteamAudio : Node
             {
                 if (mutex.WaitOne(0))
                 {
+                    IPL.SimulatorRunDirect(SimulatorDefault);
                     IPL.SimulatorRunReflections(SimulatorDefault);
                     mutex.ReleaseMutex();
                 }
@@ -123,9 +124,10 @@ public partial class GDSteamAudio : Node
             {
                 // if (mutex.WaitOne(0))
                 {
-                    RunSim();
+                    SetupInputs();
                     // mutex.ReleaseMutex();
                 }
+                RunSim();
                 Thread.Sleep(1);
                 Thread.Yield();
             }
@@ -140,7 +142,7 @@ public partial class GDSteamAudio : Node
         // RunSim();
     }
 
-    public void RunSim()
+    public void SetupInputs()
     {
         if (IsInstanceValid(camera))
         {
@@ -155,7 +157,11 @@ public partial class GDSteamAudio : Node
             };
             IPL.SimulatorSetSharedInputs(SimulatorDefault, IPL.SimulationFlags.Direct | IPL.SimulationFlags.Reflections, in inputs);
         }
-        IPL.SimulatorRunDirect(SimulatorDefault);
+    }
+
+    public void RunSim()
+    {
+        // IPL.SimulatorRunDirect(SimulatorDefault);
         if (IsInstanceValid(camera))
             OnSimulatorRun?.Invoke();
     }
@@ -305,6 +311,28 @@ public partial class GDSteamAudio : Node
         {
             Ahead = ConvertToIPLRaw(-v.Basis.Z.Normalized()),
             Origin = ConvertToIPL(v.Origin),
+            Right = ConvertToIPLRaw(v.Basis.X.Normalized()),
+            Up = ConvertToIPLRaw(v.Basis.Y.Normalized()),
+        };
+    }
+
+    public static IPL.CoordinateSpace3 GetIPLTransformOnlyOrigin(Transform3D v)
+    {
+        return new IPL.CoordinateSpace3()
+        {
+            Ahead = ConvertToIPLRaw(Vector3.Forward),
+            Origin = ConvertToIPL(v.Origin),
+            Right = ConvertToIPLRaw(Vector3.Right),
+            Up = ConvertToIPLRaw(Vector3.Up),
+        };
+    }
+
+    public static IPL.CoordinateSpace3 GetIPLTransformNoOrigin(Transform3D v)
+    {
+        return new IPL.CoordinateSpace3()
+        {
+            Ahead = ConvertToIPLRaw(-v.Basis.Z.Normalized()),
+            Origin = ConvertToIPL(Vector3.Zero),
             Right = ConvertToIPLRaw(v.Basis.X.Normalized()),
             Up = ConvertToIPLRaw(v.Basis.Y.Normalized()),
         };
