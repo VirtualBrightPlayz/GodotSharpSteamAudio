@@ -115,6 +115,7 @@ public partial class GDSteamAudio : Node
                     IPL.SimulatorRunReflections(SimulatorDefault);
                     mutex.ReleaseMutex();
                 }
+                Thread.Sleep(1);
                 Thread.Yield();
             }
         });
@@ -123,11 +124,12 @@ public partial class GDSteamAudio : Node
         {
             while (IsInstanceValid(this))
             {
-                // if (mutex.WaitOne(1))
+                // if (mutex.WaitOne(0))
                 {
                     RunSim();
                     // mutex.ReleaseMutex();
                 }
+                Thread.Sleep(1);
                 Thread.Yield();
             }
         });
@@ -298,14 +300,19 @@ public partial class GDSteamAudio : Node
         return new IPL.Vector3(v.X, v.Y, v.Z);
     }
 
+    public static IPL.Vector3 ConvertToIPLRaw(Vector3 v)
+    {
+        return new IPL.Vector3(v.X, v.Y, v.Z);
+    }
+
     public static IPL.CoordinateSpace3 GetIPLTransform(Transform3D v)
     {
         return new IPL.CoordinateSpace3()
         {
-            Ahead = ConvertToIPL(-v.Basis.Z),
+            Ahead = ConvertToIPLRaw(-v.Basis.Z.Normalized()),
             Origin = ConvertToIPL(v.Origin),
-            Right = ConvertToIPL(-v.Basis.X),
-            Up = ConvertToIPL(v.Basis.Y),
+            Right = ConvertToIPLRaw(v.Basis.X.Normalized()),
+            Up = ConvertToIPLRaw(v.Basis.Y.Normalized()),
         };
     }
 

@@ -82,14 +82,10 @@ public partial class SteamAudioPlayer : Node
         player = new AudioStreamPlayer3D();
         player.AttenuationModel = AudioStreamPlayer3D.AttenuationModelEnum.Disabled;
         player.PanningStrength = 0f;
-        // bus = new AudioBus();
-        // bus.Mute = true;
         capture = new AudioEffectCapture();
         capture.BufferLength = (float)GDSteamAudio.iplAudioSettings.FrameSize / GDSteamAudio.iplAudioSettings.SamplingRate;
-        // bus.AddEffect(capture);
         parent = GetParent<AudioStreamPlayer3D>();
         player.Bus = parent.Bus;
-        // parent.Bus = bus.Name;
         parent.AttenuationModel = AudioStreamPlayer3D.AttenuationModelEnum.Disabled;
         parent.PanningStrength = 0f;
         AddChild(player);
@@ -100,11 +96,11 @@ public partial class SteamAudioPlayer : Node
         };
 
         source = default;
-        // source = GDSteamAudio.NewSource(GDSteamAudio.SimulatorDefault);
         if (IsInstanceValid(GDSteamAudio.Instance?.camera))
         {
             dataBuffer.dir = parent.GlobalPosition * GDSteamAudio.Instance.camera.GlobalTransform;
             dataBuffer.camTransform = GDSteamAudio.Instance.camera.GlobalTransform;
+            dataBuffer.parentTransform = parent.GlobalTransform;
         }
         GDSteamAudio.Instance.OnSimulatorRun += SimRun;
         Play();
@@ -112,9 +108,10 @@ public partial class SteamAudioPlayer : Node
 
     public override void _Process(double delta)
     {
+        bool found = false;
         if (parent != null && IsInstanceValid(GDSteamAudio.Instance.camera))
         {
-            if (parent.GlobalPosition.DistanceSquaredTo(GDSteamAudio.Instance.camera.GlobalPosition) <= MaxDistance * MaxDistance)
+            if (true || parent.GlobalPosition.DistanceSquaredTo(GDSteamAudio.Instance.camera.GlobalPosition) <= MaxDistance * MaxDistance)
             {
                 if (bus == null)
                 {
@@ -132,32 +129,37 @@ public partial class SteamAudioPlayer : Node
                     parent.Bus = bus.Name;
                 }
             }
-            else
+            else if (bus != null)
             {
                 parent.Bus = player.Bus;
                 parent.StreamPaused = true;
-                bus?.Dispose();
+                bus.Dispose();
                 bus = null;
                 if (source.Handle != IntPtr.Zero)
+                {
                     GDSteamAudio.DelSource(source, GDSteamAudio.SimulatorDefault);
+                }
                 source = default;
-                return;
+                found = true;
+            }
+            else
+            {
+                found = true;
             }
         }
         else
         {
-            return;
+            found = true;
         }
 
-        dataBuffer.dir = parent.GlobalPosition * GDSteamAudio.Instance.camera.GlobalTransform;
-        dataBuffer.camTransform = GDSteamAudio.Instance.camera.GlobalTransform;
-        dataBuffer.parentTransform = parent.GlobalTransform;
-
-        // if (player.Playing)
-        //     FillBuffer();
-        // else
-        if (!player.Playing)
-            Play();
+        if (!found)
+        {
+            dataBuffer.parentTransform = parent.GlobalTransform;
+            dataBuffer.camTransform = GDSteamAudio.Instance.camera.GlobalTransform;
+            dataBuffer.dir = dataBuffer.parentTransform.Origin - dataBuffer.camTransform.Origin;
+            if (!player.Playing)
+                Play();
+        }
     }
 
     public override void _ExitTree()
@@ -172,15 +174,17 @@ public partial class SteamAudioPlayer : Node
         GDSteamAudio.DelAudioBuffer(bufferOut);
         GDSteamAudio.DelAudioBuffer(bufferOut2);
         bus?.Dispose();
-        capture.Dispose();
+        capture = null;
     }
 
     private static float DistCallback(float distance, IntPtr userData)
     {
-        var obj = GodotObject.InstanceFromId((ulong)userData);
+        if (!IsInstanceIdValid((ulong)userData))
+            return 0.1f;
+        var obj = InstanceFromId((ulong)userData);
         if (IsInstanceValid(obj) && obj is SteamAudioPlayer plr)
             return Mathf.Clamp(Mathf.InverseLerp(plr.MaxDistance, plr.MinDistance, distance), 0f, 1f);
-        return 0f;
+        return 0.1f;
     }
 
     private void SimRun()
@@ -225,6 +229,8 @@ public partial class SteamAudioPlayer : Node
         {
             return;
         }
+        if (!IsInstanceValid(playback) || !IsInstanceValid(capture))
+            return;
         int amount = Mathf.Min(playback.GetFramesAvailable(), GDSteamAudio.iplAudioSettings.FrameSize);
         if (amount == 0)
         {
@@ -236,6 +242,8 @@ public partial class SteamAudioPlayer : Node
         }
         if (capture.GetFramesAvailable() < amount)
             return;
+        if (buffer.Data == IntPtr.Zero || buffer2.Data == IntPtr.Zero)
+            return;
         Vector2[] data = capture.GetBuffer(amount);
         float *dataPcm = ((float**)buffer.Data)[0];
         float *dataPcm2 = ((float**)buffer2.Data)[0];
@@ -244,7 +252,6 @@ public partial class SteamAudioPlayer : Node
             dataPcm[i] = dataPcm2[i] = (data[i].X + data[i].Y) / 2f * VolumeMultiplier;
         }
 
-        // var dir = parent.GlobalPosition * cam.GlobalTransform;
         var dir = dataBuffer.dir;
 
         var directEffectParams = new IPL.DirectEffectParams();
