@@ -29,8 +29,8 @@ public partial class GDSteamAudio : Node
     public static GDSteamAudio Instance;
     public const string LogPrefix = "SteamAudio: ";
     public const int MixRate = 48000;
-    public const int AudioFrameSize = 1024 * 4;
-    // public const int AudioFrameSize = 1024 * 2;
+    // public const int AudioFrameSize = 1024 * 4;
+    public const int AudioFrameSize = 1024 * 2;
     public const int AudioFrameSizeInBytes = AudioFrameSize * sizeof(float);
     public const IPL.ReflectionEffectType ReflType = IPL.ReflectionEffectType.Convolution;
     public static Dictionary<MaterialPreset, float[]> materialPresets = new Dictionary<MaterialPreset, float[]>()
@@ -47,7 +47,8 @@ public partial class GDSteamAudio : Node
         { MaterialPreset.Metal, new[] {0.20f,0.07f,0.06f,0.05f,0.200f,0.025f,0.010f} },
         { MaterialPreset.Rock, new[] {0.13f,0.20f,0.24f,0.05f,0.015f,0.002f,0.001f} },
     };
-    public static Thread thread;
+    public static Thread audioThread;
+    public static Thread reflectThread;
     public static IPL.Context iplCtx;
     public static IPL.AudioSettings iplAudioSettings;
     public static List<IPL.Hrtf> hrtfs = new List<IPL.Hrtf>();
@@ -67,7 +68,6 @@ public partial class GDSteamAudio : Node
     public static IPL.DirectEffect DirectEffectDefault;
     public static IPL.ReflectionEffect ReflectionEffectDefault;
     public static IPL.ReflectionMixer ReflectionMixerDefault;
-    // [Signal]
     public delegate void OnSimulatorRunEventHandler();
     public event OnSimulatorRunEventHandler OnSimulatorRun;
     public static System.Threading.Mutex mutex = new System.Threading.Mutex();
@@ -106,20 +106,32 @@ public partial class GDSteamAudio : Node
     {
         Instance = this;
         Start();
-        thread = new Thread(() =>
+        reflectThread = new Thread(() =>
         {
             while (IsInstanceValid(this))
             {
-                if (mutex.WaitOne(1))
+                if (mutex.WaitOne(0))
                 {
                     IPL.SimulatorRunReflections(SimulatorDefault);
                     mutex.ReleaseMutex();
                 }
-                RunSim();
-                Thread.Sleep(3);
+                Thread.Yield();
             }
         });
-        thread.Start();
+        reflectThread.Start();
+        audioThread = new Thread(() =>
+        {
+            while (IsInstanceValid(this))
+            {
+                // if (mutex.WaitOne(1))
+                {
+                    RunSim();
+                    // mutex.ReleaseMutex();
+                }
+                Thread.Yield();
+            }
+        });
+        audioThread.Start();
     }
 
     public override void _Process(double delta)
@@ -137,7 +149,7 @@ public partial class GDSteamAudio : Node
             {
                 Listener = GetIPLTransform(cameraTransform),
                 NumRays = 4096,
-                NumBounces = 16,
+                NumBounces = 8,
                 Duration = 2f,
                 Order = 2,
                 IrradianceMinDistance = 1f,
@@ -147,7 +159,6 @@ public partial class GDSteamAudio : Node
         IPL.SimulatorRunDirect(SimulatorDefault);
         if (IsInstanceValid(camera))
             OnSimulatorRun?.Invoke();
-            // EmitSignal(SignalName.OnSimulatorRun);
     }
 
     public override void _ExitTree()
@@ -293,7 +304,7 @@ public partial class GDSteamAudio : Node
         {
             Ahead = ConvertToIPL(-v.Basis.Z),
             Origin = ConvertToIPL(v.Origin),
-            Right = ConvertToIPL(v.Basis.X),
+            Right = ConvertToIPL(-v.Basis.X),
             Up = ConvertToIPL(v.Basis.Y),
         };
     }
@@ -341,7 +352,7 @@ public partial class GDSteamAudio : Node
             NumDiffuseSamples = 1024,
             MaxDuration = 2f,
             MaxOrder = 2,
-            MaxNumSources = 10240,
+            MaxNumSources = 64000,
             NumThreads = 4,
             SamplingRate = iplAudioSettings.SamplingRate,
             FrameSize = iplAudioSettings.FrameSize,
