@@ -23,8 +23,8 @@ public partial class ProcessBuffersReflection : IDisposable
 
     public float[] Process(ref IPL.ReflectionEffectParams reflectionArgs, ref IPL.AmbisonicsDecodeEffectParams ambisonicsArgs)
     {
-        // if (IsDisposed)
-        //     return Array.Empty<float>();
+        if (IsDisposed)
+            return Array.Empty<float>();
         var InterlacingBuffer = new float[OutputBuffer.NumSamples * OutputBuffer.NumChannels];
         IPL.ReflectionEffectApply(ReflectionEffect, ref reflectionArgs, ref InputBuffer, ref EffectBuffer, default);
         IPL.AmbisonicsDecodeEffectApply(AmbisonicsDecodeEffect, ref ambisonicsArgs, ref EffectBuffer, ref OutputBuffer);
@@ -37,13 +37,13 @@ public partial class ProcessBuffersReflection : IDisposable
         if (IsDisposed)
             return;
         IsDisposed = true;
-        GDSteamAudio.WaitOne(() =>
-        {
+        // GDSteamAudio.WaitOne(() =>
+        // {
             GDSteamAudio.DelReflectionEffect(ref ReflectionEffect);
             GDSteamAudio.DelAmbisonicsDecodeEffect(ref AmbisonicsDecodeEffect);
             GDSteamAudio.DelAudioBuffer(ref InputBuffer);
             GDSteamAudio.DelAudioBuffer(ref EffectBuffer);
             GDSteamAudio.DelAudioBuffer(ref OutputBuffer);
-        });
+        // });
     }
 }

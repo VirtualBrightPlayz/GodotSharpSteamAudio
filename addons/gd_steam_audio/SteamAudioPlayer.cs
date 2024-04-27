@@ -88,7 +88,7 @@ public partial class SteamAudioPlayer : Node
         player.AttenuationModel = AudioStreamPlayer3D.AttenuationModelEnum.Disabled;
         player.PanningStrength = 0f;
         capture = new AudioEffectCapture();
-        capture.BufferLength = (float)GDSteamAudio.iplAudioSettings.FrameSize / GDSteamAudio.iplAudioSettings.SamplingRate;
+        capture.BufferLength = 0.5f;//(float)GDSteamAudio.iplAudioSettings.FrameSize / GDSteamAudio.iplAudioSettings.SamplingRate;
         parent = GetParent<AudioStreamPlayer3D>();
 
         parentPanning = parent.PanningStrength;
@@ -102,7 +102,7 @@ public partial class SteamAudioPlayer : Node
         player.Stream = new AudioStreamGenerator()
         {
             MixRate = GDSteamAudio.iplAudioSettings.SamplingRate,
-            BufferLength = (float)GDSteamAudio.iplAudioSettings.FrameSize / GDSteamAudio.iplAudioSettings.SamplingRate,
+            BufferLength = 0.1f,//(float)GDSteamAudio.iplAudioSettings.FrameSize / GDSteamAudio.iplAudioSettings.SamplingRate,
         };
 
         source = default;

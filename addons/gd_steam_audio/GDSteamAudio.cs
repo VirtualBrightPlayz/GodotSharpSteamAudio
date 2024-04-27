@@ -116,17 +116,14 @@ public partial class GDSteamAudio : Node
                     continue;
                 }
                 bool hasLock = false;
-                mutex.Enter(ref hasLock);
+                mutex.TryEnter(ref hasLock);
                 if (hasLock)
                 {
-                    if (loaded)
-                    {
-                        IPL.SimulatorRunDirect(SimulatorDefault);
-                        IPL.SimulatorRunReflections(SimulatorDefault);
-                    }
+                    IPL.SimulatorRunDirect(SimulatorDefault);
+                    IPL.SimulatorRunReflections(SimulatorDefault);
                     mutex.Exit();
                 }
-                Thread.Sleep(1);
+                Thread.Sleep(2);
                 Thread.Yield();
             }
         });
@@ -148,7 +145,7 @@ public partial class GDSteamAudio : Node
                     RunSim();
                     mutex.Exit();
                 }
-                Thread.Sleep(1);
+                // Thread.Sleep(1);
                 Thread.Yield();
             }
         });
@@ -204,7 +201,7 @@ public partial class GDSteamAudio : Node
             bool hasLock = false;
             while (!hasLock)
             {
-                mutex.Enter(ref hasLock);
+                mutex.TryEnter(ref hasLock);
                 if (hasLock)
                 {
                     try
@@ -216,7 +213,10 @@ public partial class GDSteamAudio : Node
                         GD.PrintErr(LogPrefix, e);
                     }
                     mutex.Exit();
+                    break;
                 }
+                Thread.Sleep(5);
+                Thread.Yield();
             }
         }).Start();
     }
@@ -394,10 +394,12 @@ public partial class GDSteamAudio : Node
         };
         CheckError(IPL.SourceCreate(simulator, in settings, out var source));
         IPL.SourceAdd(source, simulator);
+        /*
         WaitOne(() =>
         {
             IPL.SimulatorCommit(simulator);
         });
+        */
         sources.Add(source);
         return source;
     }
@@ -408,10 +410,12 @@ public partial class GDSteamAudio : Node
             throw new Exception();
         sources.Remove(source);
         IPL.SourceRemove(source, simulator);
+        /*
         WaitOne(() =>
         {
             IPL.SimulatorCommit(simulator);
         });
+        */
         IPL.SourceRelease(ref source);
     }
 
