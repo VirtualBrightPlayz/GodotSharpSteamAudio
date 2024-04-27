@@ -14,6 +14,8 @@ public partial class ProcessBuffersDirect : IDisposable
     public IPL.ReflectionMixer ReflectionMixer;
     public IPL.AmbisonicsDecodeEffect AmbisonicsDecodeEffect;
 
+    public bool IsDisposed = false;
+
     public ProcessBuffersDirect()
     {
         DirectEffect = GDSteamAudio.NewDirectEffect(1);
@@ -25,6 +27,8 @@ public partial class ProcessBuffersDirect : IDisposable
 
     public float[] Process(ref IPL.DirectEffectParams directArgs, ref IPL.BinauralEffectParams binauralArgs)
     {
+        if (IsDisposed)
+            return Array.Empty<float>();
         var InterlacingBuffer = new float[OutputBuffer.NumSamples * OutputBuffer.NumChannels];
         IPL.DirectEffectApply(DirectEffect, ref directArgs, ref InputBuffer, ref EffectBuffer);
         IPL.BinauralEffectApply(BinauralEffect, ref binauralArgs, ref EffectBuffer, ref OutputBuffer);
@@ -34,10 +38,13 @@ public partial class ProcessBuffersDirect : IDisposable
 
     public void Dispose()
     {
-        GDSteamAudio.DelDirectEffect(DirectEffect);
-        GDSteamAudio.DelBinauralEffect(BinauralEffect);
-        GDSteamAudio.DelAudioBuffer(InputBuffer);
-        GDSteamAudio.DelAudioBuffer(EffectBuffer);
-        GDSteamAudio.DelAudioBuffer(OutputBuffer);
+        if (IsDisposed)
+            return;
+        IsDisposed = true;
+        GDSteamAudio.DelDirectEffect(ref DirectEffect);
+        GDSteamAudio.DelBinauralEffect(ref BinauralEffect);
+        GDSteamAudio.DelAudioBuffer(ref InputBuffer);
+        GDSteamAudio.DelAudioBuffer(ref EffectBuffer);
+        GDSteamAudio.DelAudioBuffer(ref OutputBuffer);
     }
 }

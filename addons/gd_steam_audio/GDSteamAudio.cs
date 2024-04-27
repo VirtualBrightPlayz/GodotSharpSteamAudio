@@ -70,6 +70,8 @@ public partial class GDSteamAudio : Node
     public static System.Threading.Mutex mutex = new System.Threading.Mutex();
     [Export]
     public Camera3D camera;
+    [Export]
+    public bool loadOnStart = true;
     private Transform3D cameraTransform = Transform3D.Identity;
 
     static GDSteamAudio()
@@ -102,15 +104,24 @@ public partial class GDSteamAudio : Node
     public override void _EnterTree()
     {
         Instance = this;
-        Start();
+        if (loadOnStart)
+            Start();
         reflectThread = new Thread(() =>
         {
             while (IsInstanceValid(this))
             {
+                if (!loaded)
+                {
+                    Thread.Sleep(10);
+                    continue;
+                }
                 if (mutex.WaitOne(0))
                 {
-                    IPL.SimulatorRunDirect(SimulatorDefault);
-                    IPL.SimulatorRunReflections(SimulatorDefault);
+                    if (loaded)
+                    {
+                        IPL.SimulatorRunDirect(SimulatorDefault);
+                        IPL.SimulatorRunReflections(SimulatorDefault);
+                    }
                     mutex.ReleaseMutex();
                 }
                 Thread.Sleep(1);
@@ -122,6 +133,11 @@ public partial class GDSteamAudio : Node
         {
             while (IsInstanceValid(this))
             {
+                if (!loaded)
+                {
+                    Thread.Sleep(10);
+                    continue;
+                }
                 // if (mutex.WaitOne(0))
                 {
                     SetupInputs();
@@ -137,8 +153,13 @@ public partial class GDSteamAudio : Node
 
     public override void _Process(double delta)
     {
+        if (!loaded)
+        {
+            return;
+        }
         if (IsInstanceValid(camera))
             cameraTransform = camera.GlobalTransform;
+        // SetupInputs();
         // RunSim();
     }
 
@@ -220,9 +241,24 @@ public partial class GDSteamAudio : Node
     {
         if (!loaded)
             return;
+        loaded = false;
+        IPL.HrtfRelease(ref HrtfDefault);
+        IPL.SceneRelease(ref SceneDefault);
+        IPL.SimulatorRelease(ref SimulatorDefault);
         HrtfDefault = default;
         SceneDefault = default;
         SimulatorDefault = default;
+        sources.Clear();
+        simulators.Clear();
+        staticMeshes.Clear();
+        scenes.Clear();
+        audioBuffers.Clear();
+        directEffects.Clear();
+        reflectionMixers.Clear();
+        reflectionEffects.Clear();
+        binauralEffects.Clear();
+        hrtfs.Clear();
+        /*
         for (int i = 0; i < sources.Count; i++)
         {
             var item = sources[i];
@@ -283,8 +319,8 @@ public partial class GDSteamAudio : Node
             IPL.HrtfRelease(ref hrtf);
         }
         hrtfs.Clear();
+        */
         IPL.ContextRelease(ref iplCtx);
-        loaded = false;
         GD.Print(LogPrefix, "Unloaded.");
     }
 
@@ -356,8 +392,10 @@ public partial class GDSteamAudio : Node
         return source;
     }
 
-    public static void DelSource(IPL.Source source, IPL.Simulator simulator)
+    public static void DelSource(ref IPL.Source source, IPL.Simulator simulator)
     {
+        if (!loaded)
+            throw new Exception();
         sources.Remove(source);
         IPL.SourceRemove(source, simulator);
         WaitOne(() =>
@@ -461,8 +499,10 @@ public partial class GDSteamAudio : Node
         return mesh;
     }
 
-    public static void DelStaticMesh(IPL.StaticMesh mesh)
+    public static void DelStaticMesh(ref IPL.StaticMesh mesh)
     {
+        if (!loaded)
+            throw new Exception();
         staticMeshes.Remove(mesh);
         IPL.StaticMeshRelease(ref mesh);
     }
@@ -493,8 +533,10 @@ public partial class GDSteamAudio : Node
         return effect;
     }
 
-    public static void DelDirectEffect(IPL.DirectEffect effect)
+    public static void DelDirectEffect(ref IPL.DirectEffect effect)
     {
+        if (!loaded)
+            throw new Exception();
         directEffects.Remove(effect);
         IPL.DirectEffectRelease(ref effect);
     }
@@ -514,8 +556,10 @@ public partial class GDSteamAudio : Node
         return effect;
     }
 
-    public static void DelReflectionEffect(IPL.ReflectionEffect effect)
+    public static void DelReflectionEffect(ref IPL.ReflectionEffect effect)
     {
+        if (!loaded)
+            throw new Exception();
         reflectionEffects.Remove(effect);
         IPL.ReflectionEffectRelease(ref effect);
     }
@@ -535,8 +579,10 @@ public partial class GDSteamAudio : Node
         return effect;
     }
 
-    public static void DelReflectionMixer(IPL.ReflectionMixer effect)
+    public static void DelReflectionMixer(ref IPL.ReflectionMixer effect)
     {
+        if (!loaded)
+            throw new Exception();
         reflectionMixers.Remove(effect);
         IPL.ReflectionMixerRelease(ref effect);
     }
@@ -554,8 +600,10 @@ public partial class GDSteamAudio : Node
         return effect;
     }
 
-    public static void DelBinauralEffect(IPL.BinauralEffect effect)
+    public static void DelBinauralEffect(ref IPL.BinauralEffect effect)
     {
+        if (!loaded)
+            throw new Exception();
         binauralEffects.Remove(effect);
         IPL.BinauralEffectRelease(ref effect);
     }
@@ -578,8 +626,10 @@ public partial class GDSteamAudio : Node
         return effect;
     }
 
-    public static void DelAmbisonicsDecodeEffect(IPL.AmbisonicsDecodeEffect effect)
+    public static void DelAmbisonicsDecodeEffect(ref IPL.AmbisonicsDecodeEffect effect)
     {
+        if (!loaded)
+            throw new Exception();
         // binauralEffects.Remove(effect);
         IPL.AmbisonicsDecodeEffectRelease(ref effect);
     }
@@ -594,8 +644,10 @@ public partial class GDSteamAudio : Node
         return buffer;
     }
 
-    public static void DelAudioBuffer(IPL.AudioBuffer buffer)
+    public static void DelAudioBuffer(ref IPL.AudioBuffer buffer)
     {
+        if (!loaded)
+            throw new Exception();
         audioBuffers.Remove(buffer);
         IPL.AudioBufferFree(iplCtx, ref buffer);
     }
