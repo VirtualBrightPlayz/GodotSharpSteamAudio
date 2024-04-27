@@ -41,13 +41,13 @@ public partial class ProcessBuffersDirect : IDisposable
         if (IsDisposed)
             return;
         IsDisposed = true;
-        // GDSteamAudio.WaitOne(() =>
-        // {
+        GDSteamAudio.WaitProcess(() =>
+        {
             GDSteamAudio.DelDirectEffect(ref DirectEffect);
             GDSteamAudio.DelBinauralEffect(ref BinauralEffect);
             GDSteamAudio.DelAudioBuffer(ref InputBuffer);
             GDSteamAudio.DelAudioBuffer(ref EffectBuffer);
             GDSteamAudio.DelAudioBuffer(ref OutputBuffer);
-        // });
+        });
     }
 }

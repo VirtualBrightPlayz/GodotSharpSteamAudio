@@ -68,6 +68,7 @@ public partial class GDSteamAudio : Node
     public delegate void OnSimulatorRunEventHandler();
     public event OnSimulatorRunEventHandler OnSimulatorRun;
     public static System.Threading.SpinLock mutex = new System.Threading.SpinLock();
+    public static System.Threading.SpinLock simMutex = new System.Threading.SpinLock();
     [Export]
     public Camera3D camera;
     [Export]
@@ -116,12 +117,20 @@ public partial class GDSteamAudio : Node
                     continue;
                 }
                 bool hasLock = false;
-                mutex.TryEnter(ref hasLock);
+                hasLock = true;
+                // mutex.TryEnter(ref hasLock);
                 if (hasLock)
                 {
-                    IPL.SimulatorRunDirect(SimulatorDefault);
-                    IPL.SimulatorRunReflections(SimulatorDefault);
-                    mutex.Exit();
+                    bool hasSimLock = false;
+                    simMutex.Enter(ref hasSimLock);
+                    if (hasSimLock)
+                    {
+                        IPL.SimulatorCommit(SimulatorDefault);
+                        IPL.SimulatorRunDirect(SimulatorDefault);
+                        IPL.SimulatorRunReflections(SimulatorDefault);
+                        simMutex.Exit();
+                    }
+                    // mutex.Exit();
                 }
                 Thread.Sleep(2);
                 Thread.Yield();
@@ -138,14 +147,14 @@ public partial class GDSteamAudio : Node
                     continue;
                 }
                 bool hasLock = false;
-                mutex.Enter(ref hasLock);
+                mutex.TryEnter(ref hasLock);
                 if (hasLock)
                 {
                     SetupInputs();
                     RunSim();
                     mutex.Exit();
                 }
-                // Thread.Sleep(1);
+                Thread.Sleep(1);
                 Thread.Yield();
             }
         });
@@ -201,6 +210,33 @@ public partial class GDSteamAudio : Node
             bool hasLock = false;
             while (!hasLock)
             {
+                simMutex.TryEnter(ref hasLock);
+                if (hasLock)
+                {
+                    try
+                    {
+                        callback();
+                    }
+                    catch (Exception e)
+                    {
+                        GD.PrintErr(LogPrefix, e);
+                    }
+                    simMutex.Exit();
+                    break;
+                }
+                Thread.Sleep(10);
+                // Thread.Yield();
+            }
+        }).Start();
+    }
+
+    public static void WaitProcess(Action callback)
+    {
+        new Thread(() =>
+        {
+            bool hasLock = false;
+            while (!hasLock)
+            {
                 mutex.TryEnter(ref hasLock);
                 if (hasLock)
                 {
@@ -215,7 +251,7 @@ public partial class GDSteamAudio : Node
                     mutex.Exit();
                     break;
                 }
-                Thread.Sleep(5);
+                Thread.Sleep(2);
                 Thread.Yield();
             }
         }).Start();
@@ -394,12 +430,12 @@ public partial class GDSteamAudio : Node
         };
         CheckError(IPL.SourceCreate(simulator, in settings, out var source));
         IPL.SourceAdd(source, simulator);
-        /*
-        WaitOne(() =>
-        {
-            IPL.SimulatorCommit(simulator);
-        });
-        */
+        // /*
+        // WaitOne(() =>
+        // {
+            // IPL.SimulatorCommit(simulator);
+        // });
+        // */
         sources.Add(source);
         return source;
     }
@@ -410,12 +446,12 @@ public partial class GDSteamAudio : Node
             throw new Exception();
         sources.Remove(source);
         IPL.SourceRemove(source, simulator);
-        /*
-        WaitOne(() =>
-        {
-            IPL.SimulatorCommit(simulator);
-        });
-        */
+        // /*
+        // WaitOne(() =>
+        // {
+            // IPL.SimulatorCommit(simulator);
+        // });
+        // */
         IPL.SourceRelease(ref source);
     }
 

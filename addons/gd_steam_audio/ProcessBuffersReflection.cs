@@ -37,13 +37,13 @@ public partial class ProcessBuffersReflection : IDisposable
         if (IsDisposed)
             return;
         IsDisposed = true;
-        // GDSteamAudio.WaitOne(() =>
-        // {
+        GDSteamAudio.WaitProcess(() =>
+        {
             GDSteamAudio.DelReflectionEffect(ref ReflectionEffect);
             GDSteamAudio.DelAmbisonicsDecodeEffect(ref AmbisonicsDecodeEffect);
             GDSteamAudio.DelAudioBuffer(ref InputBuffer);
             GDSteamAudio.DelAudioBuffer(ref EffectBuffer);
             GDSteamAudio.DelAudioBuffer(ref OutputBuffer);
-        // });
+        });
     }
 }

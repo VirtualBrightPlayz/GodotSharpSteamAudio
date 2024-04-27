@@ -279,7 +279,8 @@ public partial class SteamAudioPlayer : Node
         float *dataPcmReflect = ((float**)reflectionBuffers.InputBuffer.Data)[0];
         for (int i = 0; i < amount; i++)
         {
-            dataPcmDirect[i] = dataPcmReflect[i] = (data[i].X + data[i].Y) / 2f * VolumeMultiplier;
+            dataPcmDirect[i] = (data[i].X + data[i].Y) / 2f * VolumeMultiplier;
+            dataPcmReflect[i] = (data[i].X + data[i].Y) / 2f * VolumeMultiplier;
         }
 
         var dir = dataBuffer.dir;
@@ -308,11 +309,11 @@ public partial class SteamAudioPlayer : Node
             Binaural = 1,
         };
         Vector2[] frames = new Vector2[amount];
-        if (Reflections && dir.LengthSquared() <= MaxDistance * MaxDistance)
+        if (Reflections /*&& dir.LengthSquared() <= MaxDistance * MaxDistance*/)
         {
             var InterlacingBuffer = reflectionBuffers.Process(ref reflectionEffectParams, ref decodeParams);
             var NumChannels = reflectionBuffers.OutputBuffer.NumChannels;
-            for (int i = 0; i < frames.Length; i++)
+            for (int i = 0; i < InterlacingBuffer.Length / NumChannels; i++)
             {
                 frames[i] += new Vector2(InterlacingBuffer[i*NumChannels], InterlacingBuffer[i*NumChannels+1]) * ReflectionMix;
             }
@@ -320,7 +321,7 @@ public partial class SteamAudioPlayer : Node
         {
             var InterlacingBuffer = directBuffers.Process(ref directEffectParams, ref binauralEffectParams);
             var NumChannels = directBuffers.OutputBuffer.NumChannels;
-            for (int i = 0; i < frames.Length; i++)
+            for (int i = 0; i < InterlacingBuffer.Length / NumChannels; i++)
             {
                 frames[i] += new Vector2(InterlacingBuffer[i*NumChannels], InterlacingBuffer[i*NumChannels+1]) * DirectMix;
             }
