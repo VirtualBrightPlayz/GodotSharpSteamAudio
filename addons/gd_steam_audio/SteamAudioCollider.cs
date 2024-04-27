@@ -31,7 +31,7 @@ public partial class SteamAudioCollider : Node
         CollisionShape3D parent = GetParent<CollisionShape3D>();
         staticMesh = GDSteamAudio.NewStaticMesh(GDSteamAudio.SceneDefault, Preset, parent.GlobalTransform, (ConcavePolygonShape3D)parent.Shape);
         IPL.StaticMeshAdd(staticMesh, GDSteamAudio.SceneDefault);
-        GDSteamAudio.WaitOne(() =>
+        GDSteamAudio.WaitSimulation(() =>
         {
             IPL.SceneCommit(GDSteamAudio.SceneDefault);
             IPL.SimulatorCommit(GDSteamAudio.SimulatorDefault);
@@ -55,7 +55,7 @@ public partial class SteamAudioCollider : Node
             return;
         CollisionShape3D parent = GetParent<CollisionShape3D>();
         IPL.StaticMeshRemove(staticMesh, GDSteamAudio.SceneDefault);
-        GDSteamAudio.WaitOne(() =>
+        GDSteamAudio.WaitSimulation(() =>
         {
             IPL.SceneCommit(GDSteamAudio.SceneDefault);
             IPL.SimulatorCommit(GDSteamAudio.SimulatorDefault);

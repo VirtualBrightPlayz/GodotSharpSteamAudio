@@ -141,7 +141,10 @@ public partial class SteamAudioPlayer : Node
                     parent.StreamPaused = false;
                     player.Bus = parent.Bus;
                     parent.Bus = bus.Name;
-                    source = GDSteamAudio.NewSource(GDSteamAudio.SimulatorDefault);
+                    GDSteamAudio.WaitBlockingProcess(() =>
+                    {
+                        source = GDSteamAudio.NewSource(GDSteamAudio.SimulatorDefault);
+                    });
                 }
                 else if (parent.Bus != bus.Name)
                 {
@@ -157,7 +160,10 @@ public partial class SteamAudioPlayer : Node
                 bus = null;
                 if (source.Handle != IntPtr.Zero)
                 {
-                    GDSteamAudio.DelSource(ref source, GDSteamAudio.SimulatorDefault);
+                    GDSteamAudio.WaitBlockingProcess(() =>
+                    {
+                        GDSteamAudio.DelSource(ref source, GDSteamAudio.SimulatorDefault);
+                    });
                 }
                 source = default;
                 found = true;
@@ -200,12 +206,15 @@ public partial class SteamAudioPlayer : Node
         GDSteamAudio.Instance.OnSimulatorRun -= SimRun;
         if (!GDSteamAudio.loaded)
             return;
-        if (source.Handle != IntPtr.Zero)
-            GDSteamAudio.DelSource(ref source, GDSteamAudio.SimulatorDefault);
-        directBuffers?.Dispose();
-        // directBuffers = null;
-        reflectionBuffers?.Dispose();
-        // reflectionBuffers = null;
+        GDSteamAudio.WaitBlockingProcess(() =>
+        {
+            if (source.Handle != IntPtr.Zero)
+                GDSteamAudio.DelSource(ref source, GDSteamAudio.SimulatorDefault);
+            directBuffers?.Dispose();
+            // directBuffers = null;
+            reflectionBuffers?.Dispose();
+            // reflectionBuffers = null;
+        });
     }
 
     private static float DistCallback(float distance, IntPtr userData)

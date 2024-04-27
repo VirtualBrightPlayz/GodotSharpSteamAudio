@@ -73,6 +73,7 @@ public partial class GDSteamAudio : Node
     public Camera3D camera;
     [Export]
     public bool loadOnStart = true;
+    public bool threadsRunning = false;
     private Transform3D cameraTransform = Transform3D.Identity;
 
     static GDSteamAudio()
@@ -107,9 +108,15 @@ public partial class GDSteamAudio : Node
         Instance = this;
         if (loadOnStart)
             Start();
+        StartThreads();
+    }
+
+    public void StartThreads()
+    {
+        threadsRunning = true;
         reflectThread = new Thread(() =>
         {
-            while (IsInstanceValid(this))
+            while (IsInstanceValid(this) && threadsRunning)
             {
                 if (!loaded)
                 {
@@ -125,7 +132,7 @@ public partial class GDSteamAudio : Node
                     simMutex.Enter(ref hasSimLock);
                     if (hasSimLock)
                     {
-                        IPL.SimulatorCommit(SimulatorDefault);
+                        // IPL.SimulatorCommit(SimulatorDefault);
                         IPL.SimulatorRunDirect(SimulatorDefault);
                         IPL.SimulatorRunReflections(SimulatorDefault);
                         simMutex.Exit();
@@ -139,7 +146,7 @@ public partial class GDSteamAudio : Node
         reflectThread.Start();
         audioThread = new Thread(() =>
         {
-            while (IsInstanceValid(this))
+            while (IsInstanceValid(this) && threadsRunning)
             {
                 if (!loaded)
                 {
@@ -199,10 +206,42 @@ public partial class GDSteamAudio : Node
 
     public override void _ExitTree()
     {
+        StopThreads();
         Stop();
     }
 
-    public static void WaitOne(Action callback)
+    public void StopThreads()
+    {
+        threadsRunning = false;
+        reflectThread.Join();
+        audioThread.Join();
+    }
+
+    public static void WaitBlockingProcess(Action callback)
+    {
+        bool hasLock = false;
+        while (!hasLock)
+        {
+            mutex.Enter(ref hasLock);
+            if (hasLock)
+            {
+                try
+                {
+                    callback();
+                }
+                catch (Exception e)
+                {
+                    GD.PrintErr(LogPrefix, e);
+                }
+                mutex.Exit();
+                break;
+            }
+            // Thread.Sleep(2);
+            Thread.Yield();
+        }
+    }
+
+    public static void WaitSimulation(Action callback)
     {
         new Thread(() =>
         {
@@ -430,12 +469,10 @@ public partial class GDSteamAudio : Node
         };
         CheckError(IPL.SourceCreate(simulator, in settings, out var source));
         IPL.SourceAdd(source, simulator);
-        // /*
-        // WaitOne(() =>
-        // {
-            // IPL.SimulatorCommit(simulator);
-        // });
-        // */
+        WaitSimulation(() =>
+        {
+            IPL.SimulatorCommit(simulator);
+        });
         sources.Add(source);
         return source;
     }
@@ -446,12 +483,10 @@ public partial class GDSteamAudio : Node
             throw new Exception();
         sources.Remove(source);
         IPL.SourceRemove(source, simulator);
-        // /*
-        // WaitOne(() =>
-        // {
-            // IPL.SimulatorCommit(simulator);
-        // });
-        // */
+        WaitSimulation(() =>
+        {
+            IPL.SimulatorCommit(simulator);
+        });
         IPL.SourceRelease(ref source);
     }
 
