@@ -193,19 +193,19 @@ public partial class SteamAudioPlayer : Node
         loaded = false;
         if (IsInstanceValid(player))
             player.QueueFree();
-        player = null;
+        // player = null;
         bus?.Dispose();
         bus = null;
-        capture = null;
+        // capture = null;
         GDSteamAudio.Instance.OnSimulatorRun -= SimRun;
         if (!GDSteamAudio.loaded)
             return;
         if (source.Handle != IntPtr.Zero)
             GDSteamAudio.DelSource(ref source, GDSteamAudio.SimulatorDefault);
         directBuffers?.Dispose();
-        directBuffers = null;
+        // directBuffers = null;
         reflectionBuffers?.Dispose();
-        reflectionBuffers = null;
+        // reflectionBuffers = null;
     }
 
     private static float DistCallback(float distance, IntPtr userData)

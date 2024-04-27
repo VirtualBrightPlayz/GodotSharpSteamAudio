@@ -67,7 +67,7 @@ public partial class GDSteamAudio : Node
     public static IPL.Simulator SimulatorDefault;
     public delegate void OnSimulatorRunEventHandler();
     public event OnSimulatorRunEventHandler OnSimulatorRun;
-    public static System.Threading.Mutex mutex = new System.Threading.Mutex();
+    public static System.Threading.SpinLock mutex = new System.Threading.SpinLock();
     [Export]
     public Camera3D camera;
     [Export]
@@ -115,14 +115,16 @@ public partial class GDSteamAudio : Node
                     Thread.Sleep(10);
                     continue;
                 }
-                if (mutex.WaitOne(0))
+                bool hasLock = false;
+                mutex.Enter(ref hasLock);
+                if (hasLock)
                 {
                     if (loaded)
                     {
                         IPL.SimulatorRunDirect(SimulatorDefault);
                         IPL.SimulatorRunReflections(SimulatorDefault);
                     }
-                    mutex.ReleaseMutex();
+                    mutex.Exit();
                 }
                 Thread.Sleep(1);
                 Thread.Yield();
@@ -138,12 +140,14 @@ public partial class GDSteamAudio : Node
                     Thread.Sleep(10);
                     continue;
                 }
-                // if (mutex.WaitOne(0))
+                bool hasLock = false;
+                mutex.Enter(ref hasLock);
+                if (hasLock)
                 {
                     SetupInputs();
-                    // mutex.ReleaseMutex();
+                    RunSim();
+                    mutex.Exit();
                 }
-                RunSim();
                 Thread.Sleep(1);
                 Thread.Yield();
             }
@@ -196,17 +200,23 @@ public partial class GDSteamAudio : Node
     {
         new Thread(() =>
         {
-            if (mutex.WaitOne())
+            // if (mutex.WaitOne())
+            bool hasLock = false;
+            while (!hasLock)
             {
-                try
+                mutex.Enter(ref hasLock);
+                if (hasLock)
                 {
-                    callback();
+                    try
+                    {
+                        callback();
+                    }
+                    catch (Exception e)
+                    {
+                        GD.PrintErr(LogPrefix, e);
+                    }
+                    mutex.Exit();
                 }
-                catch (Exception e)
-                {
-                    GD.PrintErr(LogPrefix, e);
-                }
-                mutex.ReleaseMutex();
             }
         }).Start();
     }
