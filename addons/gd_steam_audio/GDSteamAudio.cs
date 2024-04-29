@@ -133,13 +133,13 @@ public partial class GDSteamAudio : Node
                     if (hasSimLock)
                     {
                         // IPL.SimulatorCommit(SimulatorDefault);
-                        IPL.SimulatorRunDirect(SimulatorDefault);
+                        // IPL.SimulatorRunDirect(SimulatorDefault);
                         IPL.SimulatorRunReflections(SimulatorDefault);
                         simMutex.Exit();
                     }
                     // mutex.Exit();
                 }
-                Thread.Sleep(2);
+                Thread.Sleep(3);
                 Thread.Yield();
             }
         });
@@ -158,6 +158,7 @@ public partial class GDSteamAudio : Node
                 if (hasLock)
                 {
                     SetupInputs();
+                    IPL.SimulatorRunDirect(SimulatorDefault);
                     RunSim();
                     mutex.Exit();
                 }
@@ -234,6 +235,30 @@ public partial class GDSteamAudio : Node
                     GD.PrintErr(LogPrefix, e);
                 }
                 mutex.Exit();
+                break;
+            }
+            // Thread.Sleep(2);
+            Thread.Yield();
+        }
+    }
+
+    public static void WaitBlockingSimulation(Action callback)
+    {
+        bool hasLock = false;
+        while (!hasLock)
+        {
+            simMutex.Enter(ref hasLock);
+            if (hasLock)
+            {
+                try
+                {
+                    callback();
+                }
+                catch (Exception e)
+                {
+                    GD.PrintErr(LogPrefix, e);
+                }
+                simMutex.Exit();
                 break;
             }
             // Thread.Sleep(2);

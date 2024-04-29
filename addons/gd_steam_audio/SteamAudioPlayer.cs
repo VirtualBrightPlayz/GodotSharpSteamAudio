@@ -52,8 +52,11 @@ public partial class SteamAudioPlayer : Node
 
     public bool Playing => player.Playing;
 
+    private ulong instanceId;
+
     public override void _EnterTree()
     {
+        instanceId = GetInstanceId();
         LoadSource();
     }
 
@@ -141,7 +144,7 @@ public partial class SteamAudioPlayer : Node
                     parent.StreamPaused = false;
                     player.Bus = parent.Bus;
                     parent.Bus = bus.Name;
-                    GDSteamAudio.WaitBlockingProcess(() =>
+                    GDSteamAudio.WaitProcess(() =>
                     {
                         source = GDSteamAudio.NewSource(GDSteamAudio.SimulatorDefault);
                     });
@@ -158,14 +161,14 @@ public partial class SteamAudioPlayer : Node
                 parent.StreamPaused = true;
                 bus.Dispose();
                 bus = null;
-                if (source.Handle != IntPtr.Zero)
+                GDSteamAudio.WaitProcess(() =>
                 {
-                    GDSteamAudio.WaitBlockingProcess(() =>
+                    if (source.Handle != IntPtr.Zero)
                     {
                         GDSteamAudio.DelSource(ref source, GDSteamAudio.SimulatorDefault);
-                    });
-                }
-                source = default;
+                    }
+                    source = default;
+                });
                 found = true;
             }
             else
@@ -206,7 +209,7 @@ public partial class SteamAudioPlayer : Node
         GDSteamAudio.Instance.OnSimulatorRun -= SimRun;
         if (!GDSteamAudio.loaded)
             return;
-        GDSteamAudio.WaitBlockingProcess(() =>
+        GDSteamAudio.WaitProcess(() =>
         {
             if (source.Handle != IntPtr.Zero)
                 GDSteamAudio.DelSource(ref source, GDSteamAudio.SimulatorDefault);
@@ -245,7 +248,7 @@ public partial class SteamAudioPlayer : Node
             {
                 Type = LinearDistance ? IPL.DistanceAttenuationModelType.Callback : IPL.DistanceAttenuationModelType.InverseDistance,
                 Callback = DistCallback,
-                UserData = (nint)GetInstanceId(),
+                UserData = (nint)instanceId,
                 MinDistance = MinDistance,
             },
             AirAbsorptionModel = new IPL.AirAbsorptionModel()
