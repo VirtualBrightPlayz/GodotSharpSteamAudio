@@ -237,7 +237,7 @@ public partial class GDSteamAudio : Node
         bool hasLock = false;
         while (!hasLock)
         {
-            simMutex.Enter(ref hasLock);
+            simMutex.TryEnter(ref hasLock);
             if (hasLock)
             {
                 try
@@ -253,7 +253,7 @@ public partial class GDSteamAudio : Node
             }
             await Instance.ToSignal(Instance.GetTree(), SceneTree.SignalName.ProcessFrame);
             // Thread.Sleep(2);
-            Thread.Yield();
+            // Thread.Yield();
         }
     }
 
