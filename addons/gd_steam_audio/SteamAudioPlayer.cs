@@ -91,7 +91,7 @@ public partial class SteamAudioPlayer : Node
         player.AttenuationModel = AudioStreamPlayer3D.AttenuationModelEnum.Disabled;
         player.PanningStrength = 0f;
         capture = new AudioEffectCapture();
-        capture.BufferLength = 0.5f;//(float)GDSteamAudio.iplAudioSettings.FrameSize / GDSteamAudio.iplAudioSettings.SamplingRate;
+        capture.BufferLength = 0.5f;
         parent = GetParent<AudioStreamPlayer3D>();
 
         parentPanning = parent.PanningStrength;
@@ -105,7 +105,7 @@ public partial class SteamAudioPlayer : Node
         player.Stream = new AudioStreamGenerator()
         {
             MixRate = GDSteamAudio.iplAudioSettings.SamplingRate,
-            BufferLength = 0.1f,//(float)GDSteamAudio.iplAudioSettings.FrameSize / GDSteamAudio.iplAudioSettings.SamplingRate,
+            BufferLength = 0.1f,
         };
 
         source = default;
@@ -144,7 +144,7 @@ public partial class SteamAudioPlayer : Node
                     parent.StreamPaused = false;
                     player.Bus = parent.Bus;
                     parent.Bus = bus.Name;
-                    GDSteamAudio.WaitProcess(() =>
+                    GDSteamAudio.WaitBlockingProcess(() =>
                     {
                         source = GDSteamAudio.NewSource(GDSteamAudio.SimulatorDefault);
                     });
@@ -161,7 +161,7 @@ public partial class SteamAudioPlayer : Node
                 parent.StreamPaused = true;
                 bus.Dispose();
                 bus = null;
-                GDSteamAudio.WaitProcess(() =>
+                GDSteamAudio.WaitBlockingProcess(() =>
                 {
                     if (source.Handle != IntPtr.Zero)
                     {
@@ -185,7 +185,7 @@ public partial class SteamAudioPlayer : Node
         {
             dataBuffer.parentTransform = parent.GlobalTransform;
             dataBuffer.camTransform = GDSteamAudio.Instance.camera.GlobalTransform;
-            dataBuffer.dir = dataBuffer.parentTransform.Origin * dataBuffer.camTransform;//dataBuffer.parentTransform.Origin - dataBuffer.camTransform.Origin;
+            dataBuffer.dir = dataBuffer.parentTransform.Origin * dataBuffer.camTransform;
             if (!player.Playing)
                 Play();
         }
@@ -209,15 +209,15 @@ public partial class SteamAudioPlayer : Node
         GDSteamAudio.Instance.OnSimulatorRun -= SimRun;
         if (!GDSteamAudio.loaded)
             return;
-        GDSteamAudio.WaitProcess(() =>
+        GDSteamAudio.WaitBlockingProcess(() =>
         {
             if (source.Handle != IntPtr.Zero)
                 GDSteamAudio.DelSource(ref source, GDSteamAudio.SimulatorDefault);
-            directBuffers?.Dispose();
-            // directBuffers = null;
-            reflectionBuffers?.Dispose();
-            // reflectionBuffers = null;
         });
+        directBuffers?.Dispose();
+        // directBuffers = null;
+        reflectionBuffers?.Dispose();
+        // reflectionBuffers = null;
     }
 
     private static float DistCallback(float distance, IntPtr userData)
@@ -291,8 +291,8 @@ public partial class SteamAudioPlayer : Node
         float *dataPcmReflect = ((float**)reflectionBuffers.InputBuffer.Data)[0];
         for (int i = 0; i < amount; i++)
         {
-            dataPcmDirect[i] = (data[i].X + data[i].Y) / 2f * VolumeMultiplier;
-            dataPcmReflect[i] = (data[i].X + data[i].Y) / 2f * VolumeMultiplier;
+            dataPcmDirect[i] = (data[i].X + data[i].Y) * VolumeMultiplier;
+            dataPcmReflect[i] = (data[i].X + data[i].Y) * VolumeMultiplier;
         }
 
         var dir = dataBuffer.dir;

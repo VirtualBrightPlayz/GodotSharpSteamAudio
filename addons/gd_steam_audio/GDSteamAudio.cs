@@ -123,21 +123,13 @@ public partial class GDSteamAudio : Node
                     Thread.Sleep(10);
                     continue;
                 }
-                bool hasLock = false;
-                hasLock = true;
-                // mutex.TryEnter(ref hasLock);
-                if (hasLock)
+                bool hasSimLock = false;
+                simMutex.Enter(ref hasSimLock);
+                if (hasSimLock)
                 {
-                    bool hasSimLock = false;
-                    simMutex.Enter(ref hasSimLock);
-                    if (hasSimLock)
-                    {
-                        // IPL.SimulatorCommit(SimulatorDefault);
-                        // IPL.SimulatorRunDirect(SimulatorDefault);
-                        IPL.SimulatorRunReflections(SimulatorDefault);
-                        simMutex.Exit();
-                    }
-                    // mutex.Exit();
+                    // IPL.SimulatorRunDirect(SimulatorDefault);
+                    IPL.SimulatorRunReflections(SimulatorDefault);
+                    simMutex.Exit();
                 }
                 Thread.Sleep(3);
                 Thread.Yield();
@@ -154,7 +146,7 @@ public partial class GDSteamAudio : Node
                     continue;
                 }
                 bool hasLock = false;
-                mutex.TryEnter(ref hasLock);
+                mutex.Enter(ref hasLock);
                 if (hasLock)
                 {
                     SetupInputs();
@@ -177,8 +169,6 @@ public partial class GDSteamAudio : Node
         }
         if (IsInstanceValid(camera))
             cameraTransform = camera.GlobalTransform;
-        // SetupInputs();
-        // RunSim();
     }
 
     public void SetupInputs()
@@ -189,7 +179,7 @@ public partial class GDSteamAudio : Node
             {
                 Listener = GetIPLTransform(cameraTransform),
                 NumRays = 4096,
-                NumBounces = 16,
+                NumBounces = 8,
                 Duration = 2f,
                 Order = 2,
                 IrradianceMinDistance = 1f,
@@ -200,7 +190,6 @@ public partial class GDSteamAudio : Node
 
     public void RunSim()
     {
-        // IPL.SimulatorRunDirect(SimulatorDefault);
         if (IsInstanceValid(camera))
             OnSimulatorRun?.Invoke();
     }
@@ -218,12 +207,12 @@ public partial class GDSteamAudio : Node
         audioThread.Join();
     }
 
-    public static void WaitBlockingProcess(Action callback)
+    public static async void WaitBlockingProcess(Action callback)
     {
         bool hasLock = false;
         while (!hasLock)
         {
-            mutex.Enter(ref hasLock);
+            mutex.TryEnter(ref hasLock);
             if (hasLock)
             {
                 try
@@ -237,12 +226,13 @@ public partial class GDSteamAudio : Node
                 mutex.Exit();
                 break;
             }
+            await Instance.ToSignal(Instance.GetTree(), SceneTree.SignalName.ProcessFrame);
             // Thread.Sleep(2);
-            Thread.Yield();
+            // Thread.Yield();
         }
     }
 
-    public static void WaitBlockingSimulation(Action callback)
+    public static async void WaitBlockingSimulation(Action callback)
     {
         bool hasLock = false;
         while (!hasLock)
@@ -261,6 +251,7 @@ public partial class GDSteamAudio : Node
                 simMutex.Exit();
                 break;
             }
+            await Instance.ToSignal(Instance.GetTree(), SceneTree.SignalName.ProcessFrame);
             // Thread.Sleep(2);
             Thread.Yield();
         }
@@ -352,85 +343,30 @@ public partial class GDSteamAudio : Node
         if (!loaded)
             return;
         loaded = false;
-        IPL.HrtfRelease(ref HrtfDefault);
-        IPL.SceneRelease(ref SceneDefault);
-        IPL.SimulatorRelease(ref SimulatorDefault);
-        HrtfDefault = default;
-        SceneDefault = default;
-        SimulatorDefault = default;
-        sources.Clear();
-        simulators.Clear();
-        staticMeshes.Clear();
-        scenes.Clear();
-        audioBuffers.Clear();
-        directEffects.Clear();
-        reflectionMixers.Clear();
-        reflectionEffects.Clear();
-        binauralEffects.Clear();
-        hrtfs.Clear();
-        /*
-        for (int i = 0; i < sources.Count; i++)
+        WaitBlockingSimulation(() =>
         {
-            var item = sources[i];
-            IPL.SourceRelease(ref item);
-        }
-        sources.Clear();
-        for (int i = 0; i < simulators.Count; i++)
-        {
-            var item = simulators[i];
-            IPL.SimulatorRelease(ref item);
-        }
-        simulators.Clear();
-        for (int i = 0; i < staticMeshes.Count; i++)
-        {
-            var item = staticMeshes[i];
-            IPL.StaticMeshRelease(ref item);
-        }
-        staticMeshes.Clear();
-        for (int i = 0; i < scenes.Count; i++)
-        {
-            var item = scenes[i];
-            IPL.SceneRelease(ref item);
-        }
-        scenes.Clear();
-        for (int i = 0; i < audioBuffers.Count; i++)
-        {
-            var hrtf = audioBuffers[i];
-            IPL.AudioBufferFree(iplCtx, ref hrtf);
-        }
-        audioBuffers.Clear();
-        for (int i = 0; i < directEffects.Count; i++)
-        {
-            var item = directEffects[i];
-            IPL.DirectEffectRelease(ref item);
-        }
-        directEffects.Clear();
-        for (int i = 0; i < reflectionMixers.Count; i++)
-        {
-            var item = reflectionMixers[i];
-            IPL.ReflectionMixerRelease(ref item);
-        }
-        reflectionMixers.Clear();
-        for (int i = 0; i < reflectionEffects.Count; i++)
-        {
-            var item = reflectionEffects[i];
-            IPL.ReflectionEffectRelease(ref item);
-        }
-        reflectionEffects.Clear();
-        for (int i = 0; i < binauralEffects.Count; i++)
-        {
-            var item = binauralEffects[i];
-            IPL.BinauralEffectRelease(ref item);
-        }
-        binauralEffects.Clear();
-        for (int i = 0; i < hrtfs.Count; i++)
-        {
-            var hrtf = hrtfs[i];
-            IPL.HrtfRelease(ref hrtf);
-        }
-        hrtfs.Clear();
-        */
-        IPL.ContextRelease(ref iplCtx);
+            WaitBlockingProcess(() =>
+            {
+                IPL.HrtfRelease(ref HrtfDefault);
+                IPL.SceneRelease(ref SceneDefault);
+                IPL.SimulatorRelease(ref SimulatorDefault);
+                HrtfDefault = default;
+                SceneDefault = default;
+                SimulatorDefault = default;
+                sources.Clear();
+                simulators.Clear();
+                staticMeshes.Clear();
+                scenes.Clear();
+                audioBuffers.Clear();
+                directEffects.Clear();
+                reflectionMixers.Clear();
+                reflectionEffects.Clear();
+                binauralEffects.Clear();
+                hrtfs.Clear();
+
+                IPL.ContextRelease(ref iplCtx);
+            });
+        });
         GD.Print(LogPrefix, "Unloaded.");
     }
 
@@ -494,7 +430,7 @@ public partial class GDSteamAudio : Node
         };
         CheckError(IPL.SourceCreate(simulator, in settings, out var source));
         IPL.SourceAdd(source, simulator);
-        WaitSimulation(() =>
+        WaitBlockingSimulation(() =>
         {
             IPL.SimulatorCommit(simulator);
         });
@@ -508,7 +444,7 @@ public partial class GDSteamAudio : Node
             throw new Exception();
         sources.Remove(source);
         IPL.SourceRemove(source, simulator);
-        WaitSimulation(() =>
+        WaitBlockingSimulation(() =>
         {
             IPL.SimulatorCommit(simulator);
         });
